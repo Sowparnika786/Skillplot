@@ -68,6 +68,14 @@ def get_llm_status():
             "label": "OpenAI API (Cloud LLM)",
             "verified": True
         }
+    elif os.environ.get("VERCEL"):
+        return {
+            "available": False,
+            "provider": "fallback",
+            "model": "deterministic-rules-engine",
+            "label": "Rule-Based Deterministic Fallback (Vercel Cloud Deployment — Ollama Local-Only)",
+            "verified": False
+        }
     else:
         return {
             "available": False,

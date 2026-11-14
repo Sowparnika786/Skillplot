@@ -53,7 +53,10 @@ Roadmap Injected Tasks: {tasks_list_str}
 Write a punchy, personalized 2-sentence explanation of why their roadmap adapted and encouraging their comeback/next action. Keep under 55 words. Do not prefix with role labels."""
 
     # 1. Try Local Ollama (llama3.2:1b on M4)
-    if config.OLLAMA_BASE_URL:
+    is_vercel = bool(os.environ.get("VERCEL"))
+    is_local_ollama = bool(config.OLLAMA_BASE_URL and ("127.0.0.1" in config.OLLAMA_BASE_URL or "localhost" in config.OLLAMA_BASE_URL))
+
+    if config.OLLAMA_BASE_URL and not (is_vercel and is_local_ollama):
         try:
             url = f"{config.OLLAMA_BASE_URL.rstrip('/')}/api/generate"
             payload = {
@@ -213,7 +216,10 @@ CRITICAL INSTRUCTIONS:
 3. Do NOT force-fit unrelated skills (e.g. Python or JavaScript) or curriculum promises unless the student explicitly asks about them.
 4. Keep your answer under 4 sentences. Be helpful, clear, and technically accurate."""
 
-    if config.OLLAMA_BASE_URL:
+    is_vercel = bool(os.environ.get("VERCEL"))
+    is_local_ollama = bool(config.OLLAMA_BASE_URL and ("127.0.0.1" in config.OLLAMA_BASE_URL or "localhost" in config.OLLAMA_BASE_URL))
+
+    if config.OLLAMA_BASE_URL and not (is_vercel and is_local_ollama):
         try:
             url = f"{config.OLLAMA_BASE_URL.rstrip('/')}/api/generate"
             payload = {

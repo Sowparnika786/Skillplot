@@ -2,7 +2,20 @@
 // SKILLPILOT AI — Multi-Agent Backend API Client & Resilient Fallback Service
 // ==========================================================================
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+// Use relative /api/* URLs in frontend production requests (Vercel deployment),
+// while preserving localhost:8000 for local development.
+const getApiBaseUrl = () => {
+  if (typeof import.meta !== "undefined" && import.meta.env) {
+    if (import.meta.env.VITE_API_URL !== undefined) {
+      return import.meta.env.VITE_API_URL;
+    }
+    // In production build, default to relative path "" so /api/* routes directly to Vercel backend service
+    return import.meta.env.DEV ? "http://127.0.0.1:8000" : "";
+  }
+  return "";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Check backend health and LLM provider status

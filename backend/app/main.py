@@ -40,6 +40,8 @@ class MentorChatRequest(BaseModel):
     personality: Optional[str] = "genz"
     context: Optional[Dict[str, Any]] = None
 
+@app.get("/")
+@app.get("/api")
 @app.get("/api/health")
 async def health_check():
     llm_info = get_llm_status()
