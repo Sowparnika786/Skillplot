@@ -29,7 +29,7 @@
 - **Architecture**: Specialized Multi-Agent System coordinated by `MultiAgentOrchestrator`
 - **Data Modeling**: Pydantic v2 schemas for all agent inputs, execution events, and structured outputs
 - **HTTP Client**: `httpx` asynchronous client for LLM API integration
-- **LLM Engine**: Dual-mode engine supporting Gemini 1.5 Flash / OpenAI GPT-4o with secure backend environment variable resolution and transparent rule-based fallback when no API key is present
+- **LLM Engine**: Local Ollama (`llama3.2:1b` on `http://127.0.0.1:11434`) + Cloud LLM (Gemini 1.5 Flash / OpenAI GPT-4o) with transparent deterministic rule-based fallback when offline
 - **Testing**: Zero-dependency Node.js ESM test runners + `pytest` suite for agents, orchestrator, and FastAPI endpoints
 
 ### Design System (Linear / Vercel / Notion Aesthetic)

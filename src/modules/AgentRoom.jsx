@@ -190,6 +190,16 @@ export default function AgentRoom({ studentData, onTriggerToast, liveEvents = []
 
     const auditRes = await runProfileAuditWithOrchestrator(auditPayload);
 
+    // Refresh live health and LLM status
+    const freshHealth = await checkBackendHealth();
+    if (freshHealth.status === "healthy") {
+      setBackendStatus({
+        online: true,
+        llmLabel: freshHealth.llm?.label || "Rule-Based Fallback",
+        isLlmAvailable: freshHealth.llm?.available
+      });
+    }
+
     if (auditRes && auditRes.agentEvents && auditRes.agentEvents.length > 0) {
       setEvents(prev => [...auditRes.agentEvents, ...prev]);
       onTriggerToast(`Consensus logged: 5 Agents evaluated ${studentData?.name || 'Alex'}'s readiness at ${auditRes.readinessScore}%.`);

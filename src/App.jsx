@@ -32,11 +32,36 @@ import { evaluateAssessmentWithOrchestrator } from './services/api';
 
 export default function App() {
   // App View Mode: 'landing' | 'signin' | 'signup' | 'onboarding' | 'dashboard'
-  const [appView, setAppView] = useState('landing');
-  const [activeModule, setActiveModule] = useState('dashboard');
+  const [appView, setAppView] = useState(() => {
+    try {
+      return localStorage.getItem('skillpilot_app_view') || 'landing';
+    } catch (e) {
+      return 'landing';
+    }
+  });
+  const [activeModule, setActiveModule] = useState(() => {
+    try {
+      return localStorage.getItem('skillpilot_active_module') || 'dashboard';
+    } catch (e) {
+      return 'dashboard';
+    }
+  });
   const [studentData, setStudentData] = useState(() => loadStudentState());
   const [liveAgentEvents, setLiveAgentEvents] = useState([]);
   const [latestAssessmentResult, setLatestAssessmentResult] = useState(null);
+
+  // Persist view navigation across page reloads
+  useEffect(() => {
+    try {
+      localStorage.setItem('skillpilot_app_view', appView);
+    } catch (e) {}
+  }, [appView]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('skillpilot_active_module', activeModule);
+    } catch (e) {}
+  }, [activeModule]);
   const [assessments, setAssessments] = useState(() => {
     const history = loadStudentState().assessmentHistory || [];
     return SMART_ASSESSMENTS.map(quiz => {
@@ -132,7 +157,8 @@ export default function App() {
       score,
       selectedAnswers,
       weakTopicsOverride,
-      isDevFixture
+      isDevFixture,
+      personality: localStorage.getItem("skillpilot_pip_personality") || "genz"
     };
 
     const backendResult = await evaluateAssessmentWithOrchestrator(profilePayload, submissionPayload);
@@ -150,6 +176,8 @@ export default function App() {
         },
         weakTopics: backendResult.weakTopics,
         adaptiveTasks: backendResult.adaptiveTasks,
+        isLlmPowered: backendResult.isLlmPowered || false,
+        provider: backendResult.provider || "rule-based-fallback",
         adaptiveLogEntry: {
           id: `log-${Date.now()}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -163,7 +191,9 @@ export default function App() {
           message: backendResult.mentorMessage,
           weakTopics: backendResult.weakTopics,
           tasksAdded: backendResult.adaptiveTasks.map(t => t.title),
-          unlockedPhase: backendResult.unlockedPhase
+          unlockedPhase: backendResult.unlockedPhase,
+          isLlmPowered: backendResult.isLlmPowered || false,
+          provider: backendResult.provider || "rule-based-fallback"
         }
       };
 
@@ -275,7 +305,11 @@ export default function App() {
       quizTitle: quiz.title,
       score: score,
       band: outcome.feedback.band,
-      weakTopics: outcome.weakTopics
+      weakTopics: outcome.weakTopics,
+      mentorHeadline: outcome.feedback.headline,
+      mentorMessage: outcome.feedback.message,
+      isLlmPowered: outcome.isLlmPowered || false,
+      provider: outcome.provider || "rule-based-fallback"
     });
 
     triggerToast(

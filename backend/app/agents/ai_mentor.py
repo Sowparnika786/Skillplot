@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from .base import BaseAgent
 from ..llm_client import generate_mentor_explanation
 
@@ -20,7 +20,9 @@ class AIMentorAgent(BaseAgent):
         score: int,
         band: str,
         weak_topics: List[str],
-        injected_tasks: List[Dict[str, Any]]
+        injected_tasks: List[Dict[str, Any]],
+        skills: Optional[List[str]] = None,
+        personality: str = "genz"
     ) -> Dict[str, Any]:
         llm_response = await generate_mentor_explanation(
             student_name=student_name,
@@ -29,7 +31,9 @@ class AIMentorAgent(BaseAgent):
             score=score,
             band=band,
             weak_topics=weak_topics,
-            injected_tasks=injected_tasks
+            injected_tasks=injected_tasks,
+            skills=skills or [],
+            personality=personality
         )
 
         headline = llm_response["headline"]

@@ -70,6 +70,8 @@ class MultiAgentOrchestrator:
         events_batch.append(roadmap_result["event"])
 
         # Step 3: AI Mentor Agent
+        student_skills = [s.name for s in profile.skills] if profile.skills else []
+        chosen_personality = getattr(submission, "personality", "genz") or "genz"
         mentor_result = await self.ai_mentor.generate_feedback(
             student_name=profile.name,
             target_career=profile.targetRole or "Full Stack Developer",
@@ -77,7 +79,9 @@ class MultiAgentOrchestrator:
             score=submission.score,
             band=eval_result["band"],
             weak_topics=eval_result["weakTopics"],
-            injected_tasks=roadmap_result["injectedTasks"]
+            injected_tasks=roadmap_result["injectedTasks"],
+            skills=student_skills,
+            personality=chosen_personality
         )
         self._record_event(mentor_result["event"])
         events_batch.append(mentor_result["event"])
@@ -121,7 +125,10 @@ class MultiAgentOrchestrator:
             mentorHeadline=mentor_result["headline"],
             mentorMessage=mentor_result["message"],
             agentEvents=events_batch,
-            unlockedPhase=roadmap_result["unlockedPhase"]
+            unlockedPhase=roadmap_result["unlockedPhase"],
+            isLlmPowered=mentor_result.get("isLlmPowered", False),
+            provider=mentor_result.get("provider", "rule-based-fallback"),
+            source=mentor_result.get("source", "rule-based-fallback")
         )
 
     async def run_full_audit(

@@ -58,3 +58,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 env/
+
+# Scratch & QA audit scripts
+qa_*.mjs
+run_qa_*.mjs

@@ -34,6 +34,7 @@ class AssessmentSubmission(BaseModel):
     selectedAnswers: Dict[str, int] = Field(default_factory=dict)
     weakTopicsOverride: Optional[List[str]] = None
     isDevFixture: bool = False
+    personality: Optional[str] = "genz"
 
 class AgentExecutionEvent(BaseModel):
     id: str
@@ -65,6 +66,9 @@ class AssessmentEvaluationResult(BaseModel):
     mentorMessage: str
     agentEvents: List[AgentExecutionEvent] = Field(default_factory=list)
     unlockedPhase: Optional[str] = None
+    isLlmPowered: bool = False
+    provider: str = "rule-based-fallback"
+    source: str = "rule-based-fallback"
 
 class FullAuditResult(BaseModel):
     timestamp: str

@@ -11,7 +11,7 @@ from .models import (
     FullAuditResult
 )
 from .orchestrator import orchestrator
-from .llm_client import generate_mentor_explanation
+from .llm_client import generate_mentor_explanation, generate_mentor_chat
 
 app = FastAPI(
     title="SkillPilot AI — Multi-Agent Intelligence Backend",
@@ -36,6 +36,8 @@ class MentorChatRequest(BaseModel):
     message: str
     studentName: str = "Alex Rivera"
     targetCareer: str = "Full Stack Developer"
+    skills: Optional[List[str]] = None
+    personality: Optional[str] = "genz"
     context: Optional[Dict[str, Any]] = None
 
 @app.get("/api/health")
@@ -84,14 +86,12 @@ async def run_profile_audit(profile: LearnerProfile):
 @app.post("/api/agents/mentor/chat")
 async def mentor_chat(payload: MentorChatRequest):
     try:
-        feedback = await generate_mentor_explanation(
+        feedback = await generate_mentor_chat(
+            message=payload.message,
             student_name=payload.studentName,
             target_career=payload.targetCareer,
-            quiz_title="General Career Mentorship",
-            score=70,
-            band="reinforcement",
-            weak_topics=["Asynchronous Event Loops"],
-            injected_tasks=[]
+            skills=payload.skills or [],
+            personality=payload.personality or "genz"
         )
         return feedback
     except Exception as e:

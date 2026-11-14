@@ -669,11 +669,18 @@ export default function Assessments({
                         marginTop: '20px',
                         marginBottom: '20px'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                          <Sparkles size={16} color={feedback.color} />
-                          <h4 style={{ fontSize: '0.92rem', color: '#F8FAFC', fontWeight: 600 }}>
-                            {feedback.headline}
-                          </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Sparkles size={16} color={feedback.color} />
+                            <h4 style={{ fontSize: '0.92rem', color: '#F8FAFC', fontWeight: 600 }}>
+                              {feedback.headline}
+                            </h4>
+                          </div>
+                          {completedResult?.isLlmPowered && (
+                            <span className="badge-clean emerald" style={{ fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34D399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                              ✨ Ollama Local LLM (llama3.2:1b)
+                            </span>
+                          )}
                         </div>
                         <p style={{ fontSize: '0.82rem', color: '#94A3B8', lineHeight: 1.5 }}>
                           {feedback.message}

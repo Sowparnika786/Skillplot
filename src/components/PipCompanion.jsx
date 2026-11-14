@@ -169,7 +169,15 @@ export default function PipCompanion({
                 PIP {PERSONALITIES[personality]?.emoji} {PERSONALITIES[personality]?.label}
               </span>
               {dialogue.badge && (
-                <span className="badge-clean neutral" style={{ fontSize: '0.62rem' }}>
+                <span 
+                  className={`badge-clean ${dialogue.isLlmPowered ? 'emerald' : 'neutral'}`} 
+                  style={{ 
+                    fontSize: '0.62rem',
+                    background: dialogue.isLlmPowered ? 'rgba(16, 185, 129, 0.15)' : undefined,
+                    color: dialogue.isLlmPowered ? '#34D399' : undefined,
+                    border: dialogue.isLlmPowered ? '1px solid rgba(16, 185, 129, 0.3)' : undefined
+                  }}
+                >
                   {dialogue.badge}
                 </span>
               )}

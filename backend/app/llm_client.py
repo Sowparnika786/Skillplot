@@ -1,7 +1,14 @@
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import httpx
 from . import config
+
+PERSONALITY_TONE_GUIDELINES = {
+    "genz": "Tone: Witty, supportive, Gen Z bestie slang (bestie, cooked, lock in, comeback arc, no cap, fr fr), relevant emojis (💀, ✨, 🔥, 💅).",
+    "wholesome": "Tone: Warm, gentle, empathetic, patient coach, growth mindset, nature and sun emojis (🌱, 🌿, ☀️).",
+    "gamer": "Tone: Questline analogies, level up, grinding XP, boss fight recovery, sword and shield emojis (⚔️, 🛡️, 🎮).",
+    "professional": "Tone: Concise, strategic engineering advisor, telemetry-driven, actionable competencies, executive precision."
+}
 
 async def generate_mentor_explanation(
     student_name: str,
@@ -10,34 +17,86 @@ async def generate_mentor_explanation(
     score: int,
     band: str,
     weak_topics: list,
-    injected_tasks: list
+    injected_tasks: list,
+    skills: Optional[List[str]] = None,
+    personality: str = "genz"
 ) -> Dict[str, Any]:
     """
     Generates personalized learning guidance and encouragement.
-    Uses real Gemini or OpenAI LLM API if key is set in environment;
+    Uses local Ollama (llama3.2:1b) if running; or Gemini/OpenAI if configured;
     otherwise provides a clearly labeled deterministic rule-based fallback.
+    Sets Ollama status to verified active ONLY after a successful real response.
     """
-    prompt = f"""You are the AI Mentor in SkillPilot AI.
+    skills_summary = ", ".join(skills) if skills else "Python, SQL, HTML"
+    tone_instruction = PERSONALITY_TONE_GUIDELINES.get(
+        (personality or "genz").lower(), 
+        PERSONALITY_TONE_GUIDELINES["genz"]
+    )
+    topics_list_str = ', '.join(weak_topics) if weak_topics else 'None'
+    tasks_list_str = ', '.join([
+        t.get('title', '') if isinstance(t, dict) else str(t) 
+        for t in injected_tasks
+    ])
+
+    prompt = f"""You are PIP, the AI Mentor in SkillPilot AI.
 Student Name: {student_name}
-Target Career: {target_career}
-Diagnostic: {quiz_title}
+Target Career Goal: {target_career}
+Current Tracked Skills: {skills_summary}
+Diagnostic Assessment: {quiz_title}
 Score: {score}%
 Performance Band: {band}
-Identified Weak Topics: {', '.join(weak_topics) if weak_topics else 'None'}
-Roadmap Injected Tasks: {', '.join([t.get('title', '') for t in injected_tasks])}
+Identified Weak Topics: {topics_list_str}
+Roadmap Injected Tasks: {tasks_list_str}
 
-Generate a concise, encouraging, and technically rigorous explanation of why their roadmap changed,
-how to tackle these concepts, and supportive guidance addressing any self-doubt.
-Keep response under 4 sentences. Tone: High-agency, empathetic, technical."""
+{tone_instruction}
 
-    # 1. Try Gemini if key is provided
+Write a punchy, personalized 2-sentence explanation of why their roadmap adapted and encouraging their comeback/next action. Keep under 55 words. Do not prefix with role labels."""
+
+    # 1. Try Local Ollama (llama3.2:1b on M4)
+    if config.OLLAMA_BASE_URL:
+        try:
+            url = f"{config.OLLAMA_BASE_URL.rstrip('/')}/api/generate"
+            payload = {
+                "model": config.OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "num_predict": 85,
+                    "temperature": 0.7
+                }
+            }
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                res = await client.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    text = data.get("response", "").strip()
+                    if text:
+                        # Clean quotes if model wrapped output in quotes
+                        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+                            text = text[1:-1].strip()
+                        # Mark verified active ONLY after a successful real response
+                        config.set_ollama_verified(True)
+                        headline = f"AI Mentor Live Guidance (Ollama {config.OLLAMA_MODEL})"
+                        return {
+                            "is_llm_powered": True,
+                            "provider": "ollama",
+                            "model": config.OLLAMA_MODEL,
+                            "source": "local-llm",
+                            "headline": headline,
+                            "message": text,
+                            "personality": personality,
+                            "llm_verified": True
+                        }
+        except Exception:
+            # Fall through cleanly if Ollama is unreachable or times out
+            pass
+
+    # 2. Try Gemini if key is provided
     if config.GEMINI_API_KEY:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={config.GEMINI_API_KEY}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}]
-            }
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 res = await client.post(url, json=payload)
                 if res.status_code == 200:
                     data = res.json()
@@ -45,15 +104,17 @@ Keep response under 4 sentences. Tone: High-agency, empathetic, technical."""
                     return {
                         "is_llm_powered": True,
                         "provider": "gemini-1.5-flash",
-                        "source": "llm",
+                        "model": "gemini-1.5-flash",
+                        "source": "cloud-llm",
                         "headline": "AI Mentor Live Guidance (Gemini 1.5)",
-                        "message": text
+                        "message": text,
+                        "personality": personality,
+                        "llm_verified": True
                     }
-        except Exception as e:
-            # Fall through to rule-based fallback
+        except Exception:
             pass
 
-    # 2. Try OpenAI if key is provided
+    # 3. Try OpenAI if key is provided
     if config.OPENAI_API_KEY:
         try:
             url = "https://api.openai.com/v1/chat/completions"
@@ -61,9 +122,9 @@ Keep response under 4 sentences. Tone: High-agency, empathetic, technical."""
             payload = {
                 "model": "gpt-4o-mini",
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 200
+                "max_tokens": 150
             }
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 res = await client.post(url, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
@@ -71,14 +132,17 @@ Keep response under 4 sentences. Tone: High-agency, empathetic, technical."""
                     return {
                         "is_llm_powered": True,
                         "provider": "gpt-4o-mini",
-                        "source": "llm",
+                        "model": "gpt-4o-mini",
+                        "source": "cloud-llm",
                         "headline": "AI Mentor Live Guidance (OpenAI GPT-4o)",
-                        "message": text
+                        "message": text,
+                        "personality": personality,
+                        "llm_verified": True
                     }
         except Exception:
             pass
 
-    # 3. Clearly labeled Rule-Based Fallback
+    # 4. Clearly labeled Rule-Based Fallback
     topics_str = " and ".join(weak_topics[:2]) if weak_topics else "these concepts"
     if band == "remediation":
         headline = "Growth Opportunity: Foundational Revision Added"
@@ -104,8 +168,98 @@ Keep response under 4 sentences. Tone: High-agency, empathetic, technical."""
     return {
         "is_llm_powered": False,
         "provider": "deterministic-rules-engine",
+        "model": "deterministic-rules-engine",
         "source": "rule-based-fallback",
         "headline": headline,
         "message": message,
-        "note": "Generated via deterministic rule engine because GEMINI_API_KEY/OPENAI_API_KEY is not configured in environment."
+        "personality": personality,
+        "llm_verified": False,
+        "note": "Generated via deterministic rule engine because Ollama/Gemini/OpenAI was unreachable."
+    }
+
+async def generate_mentor_chat(
+    message: str,
+    student_name: str = "Alex Rivera",
+    target_career: str = "Full Stack Developer",
+    skills: Optional[List[str]] = None,
+    personality: str = "genz"
+) -> Dict[str, Any]:
+    """
+    Interactive Q&A chat with AI Mentor Archie/PIP powered by Ollama.
+    """
+    skills_summary = ", ".join(skills) if skills else "Python, SQL, HTML"
+    tone_instruction = PERSONALITY_TONE_GUIDELINES.get(
+        (personality or "genz").lower(), 
+        PERSONALITY_TONE_GUIDELINES["genz"]
+    )
+
+    prompt = f"""You are Archie, the AI Mentor in SkillPilot AI.
+Student: {student_name}
+Target Career: {target_career}
+Current Skills: {skills_summary}
+Question from student: "{message}"
+
+{tone_instruction}
+
+Provide a concise, technically accurate answer connecting their current skills to the answer in under 4 sentences."""
+
+    if config.OLLAMA_BASE_URL:
+        try:
+            url = f"{config.OLLAMA_BASE_URL.rstrip('/')}/api/generate"
+            payload = {
+                "model": config.OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "num_predict": 120,
+                    "temperature": 0.7
+                }
+            }
+            async with httpx.AsyncClient(timeout=7.0) as client:
+                res = await client.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    text = data.get("response", "").strip()
+                    if text:
+                        config.set_ollama_verified(True)
+                        return {
+                            "is_llm_powered": True,
+                            "provider": "ollama",
+                            "model": config.OLLAMA_MODEL,
+                            "source": "local-llm",
+                            "reply": text,
+                            "agent": "Archie (Ollama)",
+                            "llm_verified": True
+                        }
+        except Exception:
+            pass
+
+    # Deterministic fallback reply
+    q = message.lower()
+    if "dict" in q or "map" in q:
+        reply = (
+            "In Python, dictionaries accept any hashable key (tuples, integers, strings). "
+            "In JavaScript, standard objects coerce keys to strings; use ES6 Map (`const m = new Map()`) "
+            "for arbitrary key types. Your Python dictionary background directly maps to JS Map!"
+        )
+    elif "event loop" in q:
+        reply = (
+            "Think of the JS Event Loop like a restaurant kitchen: synchronous code is the chef cooking on the main burner, "
+            "while async calls (fetch, setTimeout) are timers. When timers ding, their callbacks wait in the task queue "
+            "until the chef's cutting board (call stack) is completely empty!"
+        )
+    else:
+        reply = (
+            f"Great question, {student_name}! Leveraging your {skills_summary} background gives you a major algorithmic advantage. "
+            f"Focus on how asynchronous promises coordinate with your backend data contracts."
+        )
+
+    return {
+        "is_llm_powered": False,
+        "provider": "deterministic-rules-engine",
+        "model": "deterministic-rules-engine",
+        "source": "rule-based-fallback",
+        "reply": reply,
+        "agent": "Archie",
+        "llm_verified": False
     }

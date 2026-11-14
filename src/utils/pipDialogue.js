@@ -48,11 +48,35 @@ export function getPipDialogue({
 
   // 1. Assessment Outcome Reaction (Highest Priority)
   if (latestAssessment) {
-    const { score, quizTitle, band, weakTopics = [] } = latestAssessment;
+    const { 
+      score, 
+      quizTitle, 
+      band, 
+      weakTopics = [], 
+      mentorHeadline, 
+      mentorMessage, 
+      isLlmPowered, 
+      provider 
+    } = latestAssessment;
     const isJS = (quizTitle || "").toLowerCase().includes("javascript") || (quizTitle || "").toLowerCase().includes("js");
     const topicsStr = weakTopics.length > 0 
       ? weakTopics.slice(0, 2).join(" & ") 
       : (isJS ? "async concepts" : "these core concepts");
+
+    // If an LLM generated a personalized explanation, PIP presents it directly!
+    if (isLlmPowered && mentorHeadline && mentorMessage) {
+      const state = score >= 80 ? "celebrating" : score < 50 ? "encouraging" : "happy";
+      const actionLabel = score >= 80 ? "View Unlocked Phase" : "View Roadmap Revision";
+      return {
+        state,
+        headline: mentorHeadline,
+        body: mentorMessage,
+        actionLabel,
+        actionTarget: "roadmap",
+        badge: "✨ Ollama Local LLM",
+        isLlmPowered: true
+      };
+    }
 
     if (score < 50) {
       if (p === "genz") {
