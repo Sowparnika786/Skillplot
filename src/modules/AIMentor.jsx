@@ -7,6 +7,7 @@ import {
   Code2
 } from 'lucide-react';
 import { mentorChatHistory } from '../data/mockData';
+import { sendMentorChatMessage } from '../services/api';
 
 export default function AIMentor({ 
   studentData, 
@@ -32,7 +33,7 @@ export default function AIMentor({
     "Encouraging words on my 14-day study streak"
   ];
 
-  const handleSendMessage = (textToSend) => {
+  const handleSendMessage = async (textToSend) => {
     const query = textToSend || inputText;
     if (!query.trim()) return;
 
@@ -47,31 +48,67 @@ export default function AIMentor({
     setInputText('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      let aiReplyText = "";
+    try {
+      const activePersonality = localStorage.getItem("skillpilot_pip_personality") || "genz";
+      const studentSkills = studentData?.skills ? studentData.skills.map(s => s.name) : ["Python", "SQL"];
 
-      if (query.toLowerCase().includes("dict") || query.toLowerCase().includes("map")) {
-        aiReplyText = `In Python, dictionaries accept any hashable key (tuples, integers, strings):\n\n\`d = {(1, 2): 'coords', 'key': 'val'}\`\n\nIn standard JavaScript objects, property keys are coerced to strings. If you need non-string keys, use the ES6 \`Map\` class:\n\n\`const map = new Map(); map.set({ id: 1 }, 'user');\``;
-      } else if (query.toLowerCase().includes("project") || query.toLowerCase().includes("portfolio")) {
-        aiReplyText = `Recommended flagship project for your stack:\n\n**"AlphaStream: Algorithmic Market Sentiment Radar"**\n- **Backend**: Python FastAPI service utilizing your ETL pipeline.\n- **Frontend**: Modern React 19 dashboard with live metrics and filter controls.\n- **Database**: PostgreSQL storing historical data.\n\nThis reinforces your proven data depth while proving client-side reactivity to hiring teams.`;
-      } else if (query.toLowerCase().includes("pep") || query.toLowerCase().includes("streak") || query.toLowerCase().includes("encourag")) {
-        aiReplyText = `Alex, you've maintained a 14-day streak, scored 80% on ES6 diagnostics, and have 2 verified Python projects. Transitioning to Full Stack is not starting from zero; you are building on a rock-solid algorithmic base. Keep showing up daily!`;
+      const res = await sendMentorChatMessage({
+        message: query.trim(),
+        studentName: studentData?.name || "Alex Rivera",
+        targetCareer: studentData?.targetRole || "Full Stack Developer",
+        skills: studentSkills,
+        personality: activePersonality
+      });
+
+      let aiReplyText = "";
+      let agentLabel = "Archie";
+      let isLlm = false;
+
+      if (res && res.reply) {
+        aiReplyText = res.reply;
+        agentLabel = res.agent || (res.is_llm_powered ? "Archie (Ollama)" : "Archie");
+        isLlm = !!res.is_llm_powered;
       } else {
-        aiReplyText = `Great question! Your Python baseline gives you an advantage: memory management, loops, and server architecture are already second nature. For this topic, focus on how the client issues asynchronous fetch requests to your backend endpoints.`;
+        // Semantic, accurately attributed client fallback if backend is offline
+        const q = query.trim().toLowerCase();
+        const isJava = /\bjava\b/.test(q) && !q.includes("javascript");
+
+        if (isJava) {
+          if (q.includes("don't like") || q.includes("dislike") || q.includes("hate") || q.includes("not like")) {
+            aiReplyText = "That's completely fine! Java's verbose boilerplate and strict class hierarchies aren't for everyone. The good news: you do not need Java for modern full-stack or web engineering. You can build complete systems using Python (FastAPI/Django) or Node.js/TypeScript, completely Java-free.";
+          } else {
+            aiReplyText = "Java is a statically-typed, object-oriented language compiled to bytecode on the JVM. Keep in mind: Java is completely distinct from JavaScript (the language of the web). If Java doesn't fit your preferences, Python and TypeScript are top-tier modern alternatives.";
+          }
+        } else if (q.includes("sql")) {
+          aiReplyText = "SQL (Structured Query Language) is the standard declarative language for interacting with relational databases like PostgreSQL, MySQL, and SQLite. You use it to query (`SELECT`), insert, update, and define schemas for structured tabular data.";
+        } else if (q.includes("promise") || q.includes("promises")) {
+          aiReplyText = "A JavaScript Promise is an object representing the eventual completion (or failure) of an asynchronous operation. It transitions between Pending, Fulfilled (with a value), and Rejected (with an error), and is consumed via `.then()`, `.catch()`, or modern `async/await`.";
+        } else if (q.includes("event loop")) {
+          aiReplyText = "The JavaScript Event Loop orchestrates non-blocking concurrency: synchronous code runs immediately on the Call Stack, while asynchronous callbacks wait in task queues until the Call Stack clears.";
+        } else if (q.includes("dict") || q.includes("map")) {
+          aiReplyText = "In Python, dictionaries accept any hashable key (`d = {(1, 2): 'coords'}`). Standard JavaScript objects coerce keys to strings; use ES6 `Map` (`const map = new Map()`) for arbitrary key types.";
+        } else if (q.includes("project") || q.includes("portfolio")) {
+          aiReplyText = "Recommended flagship project for your stack:\n\n**\"AlphaStream: Algorithmic Market Sentiment Radar\"**\n- **Backend**: Python FastAPI service utilizing your ETL pipeline.\n- **Frontend**: Modern React 19 dashboard with live metrics and filter controls.\n- **Database**: PostgreSQL storing historical data.\n\nThis reinforces your proven data depth while proving client-side reactivity to hiring teams.";
+        } else {
+          aiReplyText = `Thanks for asking, ${studentData?.name ? studentData.name.split(' ')[0] : 'Alex'}! Regarding '${query.trim()}', in your ${studentData?.targetRole || 'Full Stack'} journey, focus on breaking down core concepts into first principles and applying them in hands-on code.`;
+        }
       }
 
       const aiMsg = {
         id: `ai-${Date.now()}`,
         sender: "ai",
-        agent: "Archie",
+        agent: agentLabel,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: aiReplyText
+        text: aiReplyText,
+        isLlmPowered: isLlm
       };
 
       setIsTyping(false);
       setMessages(prev => [...prev, aiMsg]);
-      onTriggerToast("Archie responded.");
-    }, 800);
+      onTriggerToast(isLlm ? "Archie (Ollama llama3.2:1b) responded." : "Archie responded.");
+    } catch (e) {
+      setIsTyping(false);
+    }
   };
 
   return (
@@ -160,7 +197,14 @@ export default function AIMentor({
                       color: '#F8FAFC'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px', fontSize: '0.68rem', color: isAi ? '#64748B' : 'rgba(255, 255, 255, 0.7)' }}>
-                        <span>{isAi ? 'Archie' : 'Alex'}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span>{isAi ? (msg.agent || 'Archie') : (studentData?.name ? studentData.name.split(' ')[0] : 'Alex')}</span>
+                          {msg.isLlmPowered && (
+                            <span className="badge-clean emerald" style={{ fontSize: '0.6rem', padding: '1px 4px' }}>
+                              ✨ Ollama
+                            </span>
+                          )}
+                        </span>
                         <span>{msg.timestamp}</span>
                       </div>
 

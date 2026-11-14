@@ -186,22 +186,32 @@ async def generate_mentor_chat(
 ) -> Dict[str, Any]:
     """
     Interactive Q&A chat with AI Mentor Archie/PIP powered by Ollama.
+    Prioritizes the exact user message, distinguishes Java from JavaScript,
+    and avoids unrelated Python-to-JavaScript advice.
     """
-    skills_summary = ", ".join(skills) if skills else "Python, SQL, HTML"
+    import re
+    skills_summary = ", ".join(skills) if skills else "Python, SQL"
     tone_instruction = PERSONALITY_TONE_GUIDELINES.get(
         (personality or "genz").lower(), 
         PERSONALITY_TONE_GUIDELINES["genz"]
     )
+    clean_message = message.strip()
 
-    prompt = f"""You are Archie, the AI Mentor in SkillPilot AI.
-Student: {student_name}
-Target Career: {target_career}
-Current Skills: {skills_summary}
-Question from student: "{message}"
-
+    prompt = f"""You are Archie, the expert AI Mentor in SkillPilot AI.
 {tone_instruction}
 
-Provide a concise, technically accurate answer connecting their current skills to the answer in under 4 sentences."""
+Student Profile (reference ONLY if directly relevant to what the student asks):
+- Name: {student_name}
+- Target Track: {target_career}
+- Current Skills: {skills_summary}
+
+Student: "{clean_message}"
+
+CRITICAL INSTRUCTIONS:
+1. Directly and strictly answer what the student said or asked. Prioritize their exact statement over profile context.
+2. DISTINGUISH JAVA FROM JAVASCRIPT: Java is an object-oriented compiled language on the JVM (Spring, enterprise backend, Android). JavaScript is the lightweight scripting language of the web (ECMAScript, Node.js, browsers). They are completely distinct languages. If the student mentions Java, address Java specifically (not JavaScript or Python).
+3. Do NOT force-fit unrelated skills (e.g. Python or JavaScript) or curriculum promises unless the student explicitly asks about them.
+4. Keep your answer under 4 sentences. Be helpful, clear, and technically accurate."""
 
     if config.OLLAMA_BASE_URL:
         try:
@@ -234,24 +244,47 @@ Provide a concise, technically accurate answer connecting their current skills t
         except Exception:
             pass
 
-    # Deterministic fallback reply
-    q = message.lower()
-    if "dict" in q or "map" in q:
+    # Deterministic fallback reply with accurate semantic relevance
+    q = clean_message.lower()
+    is_java = bool(re.search(r'\bjava\b', q)) and "javascript" not in q
+
+    if is_java:
+        if any(w in q for w in ["don't like", "dislike", "hate", "not like"]):
+            reply = (
+                "That's completely fine! Java's verbose boilerplate and strict class hierarchies aren't for everyone. "
+                "The great news: you do not need Java for modern full-stack or web engineering. "
+                "You can build outstanding applications with Python (FastAPI/Django) or Node.js/TypeScript, completely Java-free."
+            )
+        else:
+            reply = (
+                "Java is a statically-typed, object-oriented language compiled to bytecode on the JVM. "
+                "Keep in mind: Java is completely distinct from JavaScript (the language of the web). "
+                "If Java doesn't fit your preferences, Python and TypeScript are top-tier modern alternatives."
+            )
+    elif "sql" in q:
         reply = (
-            "In Python, dictionaries accept any hashable key (tuples, integers, strings). "
-            "In JavaScript, standard objects coerce keys to strings; use ES6 Map (`const m = new Map()`) "
-            "for arbitrary key types. Your Python dictionary background directly maps to JS Map!"
+            "SQL (Structured Query Language) is the standard declarative language for interacting with relational databases "
+            "like PostgreSQL, MySQL, and SQLite. You use it to query (`SELECT`), insert, update, and define schemas for structured tabular data."
+        )
+    elif "promise" in q or "promises" in q:
+        reply = (
+            "A JavaScript Promise is an object representing the eventual completion (or failure) of an asynchronous operation. "
+            "It transitions between Pending, Fulfilled (with a value), and Rejected (with an error), and is consumed via `.then()`, `.catch()`, or modern `async/await`."
         )
     elif "event loop" in q:
         reply = (
-            "Think of the JS Event Loop like a restaurant kitchen: synchronous code is the chef cooking on the main burner, "
-            "while async calls (fetch, setTimeout) are timers. When timers ding, their callbacks wait in the task queue "
-            "until the chef's cutting board (call stack) is completely empty!"
+            "The JavaScript Event Loop orchestrates non-blocking concurrency: synchronous code runs immediately on the Call Stack, "
+            "while asynchronous callbacks (timers, fetch) wait in task queues until the Call Stack clears."
+        )
+    elif "dict" in q or "map" in q:
+        reply = (
+            "In Python, dictionaries accept any hashable key (tuples, integers, strings). "
+            "In JavaScript, standard objects coerce keys to strings; use ES6 Map (`const m = new Map()`) for arbitrary key types."
         )
     else:
         reply = (
-            f"Great question, {student_name}! Leveraging your {skills_summary} background gives you a major algorithmic advantage. "
-            f"Focus on how asynchronous promises coordinate with your backend data contracts."
+            f"Thanks for asking, {student_name}! Regarding '{clean_message}', in your {target_career} journey, "
+            f"focus on mastering the fundamental concepts first and applying them through hands-on code."
         )
 
     return {
@@ -260,6 +293,6 @@ Provide a concise, technically accurate answer connecting their current skills t
         "model": "deterministic-rules-engine",
         "source": "rule-based-fallback",
         "reply": reply,
-        "agent": "Archie",
+        "agent": "Archie (Rules Fallback)",
         "llm_verified": False
     }

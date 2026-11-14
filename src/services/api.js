@@ -94,3 +94,33 @@ export async function runProfileAuditWithOrchestrator(profile) {
     return null;
   }
 }
+
+/**
+ * Send interactive question to AI Mentor Archie powered by Ollama
+ */
+export async function sendMentorChatMessage({
+  message,
+  studentName = "Alex Rivera",
+  targetCareer = "Full Stack Developer",
+  skills = [],
+  personality = "genz"
+}) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/agents/mentor/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        studentName,
+        targetCareer,
+        skills,
+        personality
+      })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn("Backend mentor chat failed, using local fallback:", err);
+    return null;
+  }
+}
