@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node src/utils/testScenario.js && node src/utils/testAuthOnboarding.js && node src/utils/testSmartAssessments.js"
+    "backend": "python3 -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000",
+    "test:frontend": "node src/utils/testScenario.js && node src/utils/testAuthOnboarding.js && node src/utils/testSmartAssessments.js && node src/utils/testPipCompanion.js",
+    "test:backend": "python3 -m pytest backend/tests",
+    "test": "node src/utils/testScenario.js && node src/utils/testAuthOnboarding.js && node src/utils/testSmartAssessments.js && node src/utils/testPipCompanion.js && python3 -m pytest backend/tests"
   },
   "dependencies": {
     "lucide-react": "^1.16.0",

@@ -6,6 +6,7 @@ import OnboardingWizard from './components/OnboardingWizard';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Toast from './components/Toast';
+import PipCompanion from './components/PipCompanion';
 
 import Dashboard from './modules/Dashboard';
 import Profile from './modules/Profile';
@@ -27,12 +28,15 @@ import {
 } from './utils/careerEngine';
 import { loadStudentState, saveStudentState, resetStudentState, DEFAULT_INITIAL_STATE } from './utils/storage';
 import { SMART_ASSESSMENTS } from './data/assessmentData';
+import { evaluateAssessmentWithOrchestrator } from './services/api';
 
 export default function App() {
   // App View Mode: 'landing' | 'signin' | 'signup' | 'onboarding' | 'dashboard'
   const [appView, setAppView] = useState('landing');
   const [activeModule, setActiveModule] = useState('dashboard');
   const [studentData, setStudentData] = useState(() => loadStudentState());
+  const [liveAgentEvents, setLiveAgentEvents] = useState([]);
+  const [latestAssessmentResult, setLatestAssessmentResult] = useState(null);
   const [assessments, setAssessments] = useState(() => {
     const history = loadStudentState().assessmentHistory || [];
     return SMART_ASSESSMENTS.map(quiz => {
@@ -109,9 +113,67 @@ export default function App() {
     );
   }, [studentData.skills, targetCareerId, studentData.completedTaskIds, studentData.adaptiveTasks, studentData.unlockedPhaseIds]);
 
-  // Assessment Completion & Adaptive Handler
-  const handleAssessmentCompleted = ({ quiz, score, selectedAnswers = {}, weakTopicsOverride = null, isDevFixture = false }) => {
-    const outcome = processAssessmentResult(quiz, score, selectedAnswers, weakTopicsOverride);
+  // Assessment Completion & Adaptive Handler (Orchestrator Powered)
+  const handleAssessmentCompleted = async ({ quiz, score, selectedAnswers = {}, weakTopicsOverride = null, isDevFixture = false }) => {
+    // Call FastAPI Multi-Agent Orchestrator
+    const profilePayload = {
+      name: studentData.name,
+      targetCareerId: targetCareerId,
+      targetRole: currentCareerConfig.title,
+      skills: studentData.skills,
+      projects: studentData.projects || [],
+      completedTaskIds: studentData.completedTaskIds || []
+    };
+
+    const submissionPayload = {
+      quizId: quiz.id,
+      quizTitle: quiz.title,
+      skillId: quiz.skillId,
+      score,
+      selectedAnswers,
+      weakTopicsOverride,
+      isDevFixture
+    };
+
+    const backendResult = await evaluateAssessmentWithOrchestrator(profilePayload, submissionPayload);
+
+    let outcome;
+    if (backendResult) {
+      outcome = {
+        score: backendResult.score,
+        feedback: {
+          band: backendResult.band,
+          status: backendResult.bandStatus,
+          headline: backendResult.mentorHeadline,
+          message: backendResult.mentorMessage,
+          color: backendResult.band === "passed" ? "#10B981" : backendResult.band === "remediation" ? "#FB7185" : "#F59E0B"
+        },
+        weakTopics: backendResult.weakTopics,
+        adaptiveTasks: backendResult.adaptiveTasks,
+        adaptiveLogEntry: {
+          id: `log-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          quizId: quiz.id,
+          quizTitle: quiz.title,
+          skillId: quiz.skillId,
+          score,
+          band: backendResult.band,
+          bandStatus: backendResult.bandStatus,
+          headline: backendResult.mentorHeadline,
+          message: backendResult.mentorMessage,
+          weakTopics: backendResult.weakTopics,
+          tasksAdded: backendResult.adaptiveTasks.map(t => t.title),
+          unlockedPhase: backendResult.unlockedPhase
+        }
+      };
+
+      if (backendResult.agentEvents && backendResult.agentEvents.length > 0) {
+        setLiveAgentEvents(prev => [...backendResult.agentEvents, ...prev]);
+      }
+    } else {
+      outcome = processAssessmentResult(quiz, score, selectedAnswers, weakTopicsOverride);
+    }
+
     const isPassed = score >= 80;
 
     const attemptRecord = {
@@ -207,6 +269,14 @@ export default function App() {
       }
       return q;
     }));
+
+    // Notify PIP Companion of assessment outcome
+    setLatestAssessmentResult({
+      quizTitle: quiz.title,
+      score: score,
+      band: outcome.feedback.band,
+      weakTopics: outcome.weakTopics
+    });
 
     triggerToast(
       isPassed
@@ -318,53 +388,11 @@ export default function App() {
     const fresh = resetStudentState();
     setStudentData(fresh);
     setAssessments(SMART_ASSESSMENTS.map(q => ({ ...q, completed: false, score: null, attemptsCount: 0 })));
+    setLatestAssessmentResult(null);
     triggerToast("Reset student state to baseline Alex Rivera demo data.");
   };
 
-  // Conditional Rendering of Views
-  if (appView === 'landing') {
-    return (
-      <LandingPage 
-        onTryDemo={handleTryDemo}
-        onGetStarted={handleGetStarted}
-        onSignIn={handleSignIn}
-      />
-    );
-  }
-
-  if (appView === 'signin') {
-    return (
-      <SignInPage 
-        onSignInSuccess={handleSignInSuccess}
-        onSwitchToSignUp={handleGetStarted}
-        onTryDemo={handleTryDemo}
-        onBackToLanding={handleExitToLanding}
-      />
-    );
-  }
-
-  if (appView === 'signup') {
-    return (
-      <SignUpPage 
-        onSignUpSuccess={handleSignUpSuccess}
-        onSwitchToSignIn={handleSignIn}
-        onTryDemo={handleTryDemo}
-        onBackToLanding={handleExitToLanding}
-      />
-    );
-  }
-
-  if (appView === 'onboarding') {
-    return (
-      <OnboardingWizard 
-        initialUser={onboardingInitialUser}
-        onComplete={handleCompleteOnboarding}
-        onSkipToDemo={handleTryDemo}
-      />
-    );
-  }
-
-  // Dashboard Render
+  // Dashboard Module Renderer
   const renderDashboardModule = () => {
     switch (activeModule) {
       case 'dashboard':
@@ -440,6 +468,7 @@ export default function App() {
           <AgentRoom 
             studentData={studentData} 
             careerMatch={careerMatch}
+            liveEvents={liveAgentEvents}
             onTriggerToast={triggerToast} 
           />
         );
@@ -484,33 +513,94 @@ export default function App() {
     }
   };
 
-  return (
-    <div className="app-container">
-      <Sidebar 
-        activeModule={activeModule} 
-        setActiveModule={setActiveModule} 
-        studentData={studentData} 
-        readinessScore={careerMatch.readinessScore}
-        onExitToLanding={handleExitToLanding}
-      />
+  // View Renderer
+  const renderCurrentView = () => {
+    if (appView === 'landing') {
+      return (
+        <LandingPage 
+          onTryDemo={handleTryDemo}
+          onGetStarted={handleGetStarted}
+          onSignIn={handleSignIn}
+        />
+      );
+    }
 
-      <main className="main-content">
-        <Header 
-          studentData={studentData} 
-          targetCareerTitle={currentCareerConfig.title}
-          readinessScore={careerMatch.readinessScore}
+    if (appView === 'signin') {
+      return (
+        <SignInPage 
+          onSignInSuccess={handleSignInSuccess}
+          onSwitchToSignUp={handleGetStarted}
+          onTryDemo={handleTryDemo}
+          onBackToLanding={handleExitToLanding}
+        />
+      );
+    }
+
+    if (appView === 'signup') {
+      return (
+        <SignUpPage 
+          onSignUpSuccess={handleSignUpSuccess}
+          onSwitchToSignIn={handleSignIn}
+          onTryDemo={handleTryDemo}
+          onBackToLanding={handleExitToLanding}
+        />
+      );
+    }
+
+    if (appView === 'onboarding') {
+      return (
+        <OnboardingWizard 
+          initialUser={onboardingInitialUser}
+          onComplete={handleCompleteOnboarding}
+          onSkipToDemo={handleTryDemo}
+        />
+      );
+    }
+
+    return (
+      <div className="app-container">
+        <Sidebar 
+          activeModule={activeModule} 
           setActiveModule={setActiveModule} 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
+          studentData={studentData} 
+          readinessScore={careerMatch.readinessScore}
           onExitToLanding={handleExitToLanding}
         />
 
-        <div className="content-viewport">
-          {renderDashboardModule()}
-        </div>
+        <main className="main-content">
+          <Header 
+            studentData={studentData} 
+            targetCareerTitle={currentCareerConfig.title}
+            readinessScore={careerMatch.readinessScore}
+            setActiveModule={setActiveModule} 
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            onExitToLanding={handleExitToLanding}
+          />
 
-        <Toast toasts={toasts} onDismiss={dismissToast} />
-      </main>
+          <div className="content-viewport">
+            {renderDashboardModule()}
+          </div>
+        </main>
+      </div>
+    );
+  };
+
+  return (
+    <div className="skillpilot-app-wrapper">
+      {renderCurrentView()}
+
+      <PipCompanion 
+        view={appView}
+        activeModule={activeModule}
+        studentData={studentData}
+        careerMatch={careerMatch}
+        latestAssessment={latestAssessmentResult}
+        setActiveModule={setActiveModule}
+        onTryDemo={handleTryDemo}
+      />
+
+      <Toast toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

@@ -1,42 +1,118 @@
-# SKILLPILOT AI — Your Personal AI Career Architect
+# SkillPilot AI — Your Personal AI Career Architect
 
-SKILLPILOT AI is a modern AI SaaS web application engineered for career progression and skill architecture.
-
-Designed specifically for **Alex** (transitioning from a strong foundation in Python and SQL into a high-earning **Full Stack Developer**), the application leverages an autonomous multi-agent swarm to analyze skill gaps, simulate career trajectories, administer technical diagnostics, and provide socratic mentoring.
+**SkillPilot AI** is an advanced AI SaaS platform for software engineers and career transitioners. It moves beyond static roadmaps by implementing a real-time reactive control loop powered by **five specialized AI backend agents**, objective **smart diagnostics**, a **4-quadrant Skill DNA analyzer**, a **dynamic self-mutating curriculum**, and **PIP**—an animated persistent learning companion.
 
 ---
 
-## 🚀 Key Modules & Architecture
+## 🌟 Key Features
 
-1. **Dashboard**: High-level telemetry, composite career readiness score (58%), sprint tracker, and live agent advisory feed.
-2. **My Profile**: Comprehensive skills inventory, verified GitHub project evidence, accredited certifications, and interactive goal milestone tracker.
-3. **Skill DNA**: Cognitive competency breakdown, benchmark comparisons, and confidence vs. proficiency quadrant matrix.
-4. **Career Explorer**: Interactive evaluation of 4 modern software roles (Full Stack, AI Full Stack, Cloud Backend, Frontend UI/UX) with one-click primary target switching.
-5. **AI Roadmap**: 4-phase structured curriculum (JS/DOM, React 19, Node/Express, and Cloud Integration) with checkable milestone tasks that earn XP in real-time.
-6. **Assessments**: Interactive diagnostic testing engine with immediate code feedback, explanations, and verifiable badge unlocks.
-7. **AI Agent Room**: Autonomous multi-agent room featuring **Archie** (Strategist), **Codex** (Code Evaluator), **Scout** (Market Radar), and **Socrates** (Coach) with live consensus logs and audit triggers.
-8. **Career Time Machine**: Interactive time-scrubber comparing 3 distinct career paths across 6-month, 1-year, and 2-year compensation curves.
-9. **AI Mentor**: Context-aware conversational guidance with suggested prompt chips, coding analogies, and Python-to-JS Rosetta Stone mental models.
-10. **Skill Passport**: Holographic cryptographic credential passport with SHA-256 verification signatures and recruiter verification endpoints.
+1. **5 Specialized AI Backend Agents**:
+   - **Skill Analyzer Agent** (`#38BDF8`): Audits self-reported skills, detects verification gaps, and calculates true baseline proficiency.
+   - **Career Matching Agent** (`#8B5CF6`): Deterministically computes weighted career readiness across Full Stack Developer, Data Analyst, and AI/ML Engineer tracks (penalizing unverified skills by `0.75x`).
+   - **Assessment Evaluator Agent** (`#F43F5E`): Grades 5-question diagnostics, extracts granular weak topics (e.g., *Event Loop & Microtasks*), and triggers remediation protocols.
+   - **Roadmap Planner Agent** (`#10B981`): Dynamically mutates learning sprints—injecting beginner revision lessons for scores `< 50%`, targeted code drills for `50%–79%`, and unlocking next phases for `≥ 80%`.
+   - **AI Mentor Agent** (`#EC4899`): Synthesizes empathetic, technically sound explanations of *why* the curriculum adapted. Supports live Gemini 1.5 / OpenAI GPT-4o integration with a clearly labeled rule-based fallback when no API key is provided.
+2. **PIP — Persistent Animated AI Learning Companion**:
+   - A playful, intelligent lavender-purple jelly mascot rendered in lightweight SVG and CSS keyframe animations.
+   - 6 expressive animated states: `waving`, `thinking`, `happy`, `encouraging`, `celebrating`, `resting`.
+   - 4 switchable personalities: **💅 Gen Z Bestie**, **🌱 Wholesome Coach**, **🎮 Gamer Companion**, and **💼 Executive Mentor**.
+   - Context-aware dialogue across landing, onboarding, Skill DNA, roadmap, and diagnostics.
+   - Reacts to real assessment scores with actionable revision guidance and non-intrusive floating controls (minimize, hide, reduce-motion).
+3. **Smart Assessments & Diagnostic Engine**:
+   - Four 5-question technical diagnostic tests: **JavaScript**, **React**, **Python**, and **SQL**.
+   - Deterministic answer grading, topic tags, and detailed explanations.
+   - Built-in **Developer Demo Fixtures** to test exact threshold bands including specifically **35% remediation**.
+4. **4-Quadrant Skill DNA Analyzer**:
+   - Categorizes skills into *Core Strengths*, *Growth Edge*, *Hidden Potential*, and *Overconfidence Risks*.
+5. **AI Agent Room**:
+   - Real-time consensus and execution stream displaying actual agent decisions, timestamps, and decision payloads.
+6. **Student Onboarding & Demo Mode**:
+   - Instant 1-click Demo Mode loading Alex Rivera's live Full Stack trajectory.
+   - 3-step onboarding wizard for new learners with responsive Dark Navy UI forms.
+7. **Robust Persistence**:
+   - LocalStorage serialization with versioning, preserving completed tasks during curriculum mutations.
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Framework**: React 19 + Vite
-- **Styling**: Plain Modern CSS (Dark Navy SaaS design system, glassmorphism, responsive grid, gradients)
-- **Icons**: Lucide React
-- **State & Data**: Functional React state with zero external UI bloat
+- **Frontend**: React 19, Vite 6, Plain CSS with modern design tokens (Linear / Vercel dark theme), Lucide React
+- **Backend**: Python 3.14, FastAPI, Uvicorn, Pydantic v2, HTTPX
+- **Testing**: Zero-dependency Node.js ESM test runners + Pytest for backend agents and API endpoints
+- **Styling**: `#09090F` Obsidian Navy, `#101017` Slate, `#16161F` Cards, `#8B5CF6` Electric Violet Accent
 
 ---
 
-## 🏃‍♂️ Getting Started
+## 🚀 Setup & Running Instructions
 
-The development server is running locally:
+### 1. Prerequisites
+- **Node.js** v18+ (tested with v24)
+- **Python** 3.10+ (tested with v3.14)
+
+### 2. Frontend Setup
 ```bash
-cd /Users/sowparnika.p/.gemini/antigravity/scratch/skillpilot-ai
+# Navigate to project directory
+cd skillpilot-ai
+
+# Install dependencies
+npm install
+
+# Run Vite development server (port 5173)
 npm run dev
 ```
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 
-Access the app in your browser at:
-`http://localhost:5173/`
+### 3. Backend Setup
+```bash
+# Optional: create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install backend dependencies
+pip install -r backend/requirements.txt
+
+# Run FastAPI backend server (port 8000)
+npm run backend
+# or directly:
+python3 -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+Check backend health at [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health).
+
+### 4. Running Automated Tests
+```bash
+# Run all frontend and backend tests in one command:
+npm test
+
+# Or run separately:
+npm run test:frontend   # Runs testScenario, testAuthOnboarding, testSmartAssessments, testPipCompanion
+npm run test:backend    # Runs pytest backend/tests (12 tests)
+```
+
+### 5. Production Build
+```bash
+npm run build
+```
+
+---
+
+## 🧪 Demo Scenario Walkthrough
+
+1. Open the app and click **Try Demo** on the Landing Page to load **Alex Rivera** (targeting Full Stack Developer).
+2. Navigate to **Assessments** in the sidebar.
+3. Click **Start Diagnostic** on **JavaScript Core Diagnostic** (or use the developer fixture **Simulate 35% Score**).
+4. Upon completing with 35%:
+   - The **Assessment Evaluator Agent** flags score < 50% and identifies weak topics: *Event Loop & Microtasks* and *Promises & Async Concurrency*.
+   - The **Roadmap Planner Agent** injects 2 beginner revision lessons into Phase 1 of the roadmap.
+   - The **AI Mentor Agent** delivers contextual encouragement.
+   - **PIP** pops up with its iconic Gen Z reaction:
+     > *"Bestie, JavaScript really chose violence today 💀 But your comeback arc starts NOW! Let's fix those async concepts together. 🔥"*
+   - Navigate to the **AI Agent Room** to inspect the real-time sequence of inter-agent deliberation events.
+   - Navigate to **Roadmap** to see the injected adaptive tasks prepended to Phase 1 with previous completed tasks preserved.
+
+---
+
+## ⚠️ Limitations & Hackathon Prototype Notes
+
+- **Transparent Rule-Based Fallback**: No external LLM API key (`GEMINI_API_KEY` / `OPENAI_API_KEY`) is hardcoded. When an API key is omitted, the system operates in a clearly labeled deterministic rule-based fallback mode (`source: "rule-based-fallback"`), ensuring reliable, instant responses during hackathon judging.
+- **Client-Side Auth**: The authentication forms feature realistic client-side validation and onboarding state capture; third-party OAuth providers (Google/GitHub) and JWT storage are not integrated in this phase.
+- **Data Persistence**: Data is persisted reactively in browser `localStorage` alongside the FastAPI backend.

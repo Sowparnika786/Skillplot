@@ -72,7 +72,7 @@ export default function Assessments({
     setShowExplanation(true);
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     setShowExplanation(false);
     if (currentQuestionIdx < activeQuiz.questions.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1);
@@ -97,7 +97,7 @@ export default function Assessments({
       };
 
       if (onCompleteAssessment) {
-        const fullOutcome = onCompleteAssessment(result);
+        const fullOutcome = await onCompleteAssessment(result);
         setCompletedResult(fullOutcome || result);
       } else {
         setCompletedResult(result);
@@ -114,7 +114,7 @@ export default function Assessments({
   };
 
   // Developer Fixture Handlers (specifically tests 35% remediation, 60% reinforcement, 85% mastery)
-  const handleRunDeveloperFixture = (score, label) => {
+  const handleRunDeveloperFixture = async (score, label) => {
     const targetQuiz = SMART_ASSESSMENTS.find(q => q.id === fixtureTargetQuizId) || SMART_ASSESSMENTS[0];
     
     // Predetermined weak topics based on score band
@@ -136,7 +136,7 @@ export default function Assessments({
     };
 
     if (onCompleteAssessment) {
-      const outcome = onCompleteAssessment(fixtureResult);
+      const outcome = await onCompleteAssessment(fixtureResult);
       setCompletedResult(outcome || fixtureResult);
     } else {
       setCompletedResult(fixtureResult);
